@@ -82,10 +82,13 @@ int main(void) {
             case 2: {
                 printf("=== 所有学生记录 ===\n");
 
+                int found = 0;
+
                 // 遍历所有可能的ID（1到MAXN）
                 for (int i = 1; i <= MAXN; i++) {
                     // 检查该ID位置是否有记录
                     if (id[i] == 1) {
+                        found = 1;
                         printf("-----------------\n");
                         printf("学生ID：%d\n", i);
                         printf("姓名：%s\n", name[i]);
@@ -94,7 +97,7 @@ int main(void) {
                     }
                 }
 
-                if (id[1] != 0) {  // 简单检查是否有任何记录（不完善）
+                if (!found) {  // 简单检查是否有任何记录（不完善）
                     printf("暂无学生记录。\n");
                 }
 
