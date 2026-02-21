@@ -27,8 +27,12 @@ void list_record(int id[], char name[][MAXN+1], int age[], double grade[]);
 void search_id(int id[], char name[][MAXN+1], int age[], double grade[]);
 void find_by_name(int id[], char name[][MAXN+1], int age[], double grade[]);
 
+// 辅助函数原型
+void print_record(int id, char name[][MAXN+1], int age[], double grade[]);
+
 // 输入验证函数原型
 int validate_id(int id_num, int id_array[]);
+int validate_id_range(int id_num);  // 只检查ID范围，不检查占用
 int validate_name(const char *name);
 int validate_age(int age);
 int validate_score(double score);
@@ -182,35 +186,33 @@ void list_record(int id[], char name[][MAXN+1], int age[], double grade[]){
     // 遍历所有可能的ID（1到MAXN）
     for (int i = 1; i <= MAXN; i++) {
     // 检查该ID位置是否有记录
-    if (id[i] == 1) {
-        found = 1;
-        printf("-----------------\n");
-        printf("学生ID：%d\n", i);
-        printf("姓名：%s\n", name[i]);
-        printf("年龄：%d岁\n", age[i]);
-        printf("成绩：%.2f分\n", grade[i]);  // %.2f保留两位小数
-        }
+        if (id[i] == 1) {
+            found = 1;
+            print_record(i, name, age, grade);
+            }
     }
 
-    if (!found) {  // 简单检查是否有任何记录（不完善）
+    if (!found) {  // 简单检查是否有任何记录
         printf("暂无学生记录。\n");
     }
 }
 
 void search_id(int id[], char name[][MAXN+1], int age[], double grade[]){
-    int search_id;
+    int target_id;
     printf("请输入你要查找的学生ID：\n");
-    scanf("%d", &search_id);
+    scanf("%d", &target_id);
+
+    // 首先检查ID范围是否有效
+    if (!validate_id_range(target_id)) {
+        return;
+    }
 
     // 检查该ID是否存在记录
-    if (id[search_id] != 1) {
+    if (id[target_id] != 1) {
         printf("学生不存在！\n");
     } else {
         printf("=== 学生信息 ===\n");
-        printf("学生ID：%d\n", search_id);
-        printf("姓名：%s\n", name[search_id]);
-        printf("年龄：%d岁\n", age[search_id]);
-        printf("成绩：%.2f分\n", grade[search_id]);
+        print_record(target_id, name, age, grade);
     }
 }
 
@@ -229,11 +231,7 @@ void find_by_name(int id[], char name[][MAXN+1], int age[], double grade[]){
                 if(found == 0){
                     printf("=== 找到以下匹配的学生 ===\n");
                 }
-                printf("-----------------\n");
-                printf("学生ID：%d\n", i);
-                printf("姓名：%s\n", name[i]);
-                printf("年龄：%d岁\n", age[i]);
-                printf("成绩：%.2f分\n", grade[i]);
+                print_record(i, name, age, grade);
                 found = 1;
             }
         }
@@ -242,6 +240,24 @@ void find_by_name(int id[], char name[][MAXN+1], int age[], double grade[]){
     if(found == 0){
         printf("未找到包含\"%s\"的学生记录。\n", keyword);
     }
+}
+
+// 辅助函数实现
+
+/*
+ * print_record - 打印单个学生记录
+ * 参数：id - 学生ID（数组索引）
+ *       name - 姓名数组
+ *       age - 年龄数组
+ *       grade - 成绩数组
+ * 注意：调用者需确保该ID位置存在有效记录
+ */
+void print_record(int id, char name[][MAXN+1], int age[], double grade[]) {
+    printf("-----------------\n");
+    printf("学生ID：%d\n", id);
+    printf("姓名：%s\n", name[id]);
+    printf("年龄：%d岁\n", age[id]);
+    printf("成绩：%.2f分\n", grade[id]);
 }
 
 // 输入验证函数实现
@@ -254,6 +270,16 @@ int validate_id(int id_num, int id_array[]) {
     }
     if (id_array[id_num] == 1) {
         printf("错误：ID %d 已被占用！\n", id_num);
+        return 0; // 验证失败
+    }
+    return 1; // 验证成功
+}
+
+// 验证ID范围：只检查ID是否在有效范围内（1-MAXN）
+// 用于查找操作，不需要检查是否被占用
+int validate_id_range(int id_num) {
+    if (id_num < 1 || id_num > MAXN) {
+        printf("错误：ID必须在1到%d之间！\n", MAXN);
         return 0; // 验证失败
     }
     return 1; // 验证成功
