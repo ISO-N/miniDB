@@ -1,6 +1,6 @@
 /*
  * main.c - MiniDB 主程序入口
- * 阶段五：文件 I/O + 排序 + 错误处理
+ * 阶段六：高级特性 — 位操作、国际化、数学支持
  */
 
 #include <stdio.h>
@@ -24,6 +24,29 @@ static void show_sort_menu(void) {
     printf("2. 按姓名排序\n");
     printf("3. 按年龄排序\n");
     printf("4. 按成绩排序\n");
+    printf("0. 返回主菜单\n");
+    printf("---------------\n");
+}
+
+/*
+ * 显示统计信息（直接调用 db_stats）
+ */
+static void show_stats(void) {
+    db_stats(g_db);
+}
+
+/*
+ * 显示记录状态管理子菜单
+ */
+static void show_flag_menu(void) {
+    printf("\n---------------\n");
+    printf("   记录状态管理\n");
+    printf("---------------\n");
+    printf("1. 切换只读标志\n");
+    printf("2. 切换归档标志\n");
+    printf("3. 切换 VIP 标志\n");
+    printf("4. 切换软删除标志\n");
+    printf("5. 查看所有记录状态\n");
     printf("0. 返回主菜单\n");
     printf("---------------\n");
 }
@@ -58,6 +81,45 @@ static void handle_sort_menu(void) {
     if (sort_choice >= 1 && sort_choice <= 4) {
         db_sort(g_db, sort_choice);  /* 直接使用 1-based 索引 */
     } else if (sort_choice == 0) {
+        /* 返回主菜单 */
+    } else {
+        printf("错误：无效的选择！\n");
+    }
+}
+
+/*
+ * 处理记录状态管理子菜单
+ */
+static void handle_flag_menu(void) {
+    show_flag_menu();
+    int flag_choice;
+    if (scanf("%d", &flag_choice) != 1) {
+        printf("错误：请输入有效的数字！\n");
+        clear_input_buffer();
+        return;
+    }
+
+    if (flag_choice >= 1 && flag_choice <= 4) {
+        int id;
+        printf("请输入记录 ID: ");
+        if (scanf("%d", &id) != 1) {
+            printf("错误：请输入有效的数字！\n");
+            clear_input_buffer();
+            return;
+        }
+
+        uint8_t flag;
+        switch (flag_choice) {
+            case 1: flag = FLAG_READONLY; break;
+            case 2: flag = FLAG_ARCHIVED; break;
+            case 3: flag = FLAG_VIP; break;
+            case 4: flag = FLAG_DELETED; break;
+            default: return;
+        }
+        db_toggle_flag(g_db, id, flag);
+    } else if (flag_choice == 5) {
+        db_show_flags(g_db);
+    } else if (flag_choice == 0) {
         /* 返回主菜单 */
     } else {
         printf("错误：无效的选择！\n");
@@ -131,9 +193,10 @@ int main(void) {
         printf("-------------------------------------------------\n");
         printf("1. 添加记录    2. 查看全部    3. 按 ID 查找\n");
         printf("4. 按姓名查找  5. 按 ID 删除  6. 排序记录\n");
-        printf("7. 文件操作    8. 退出系统\n");
+        printf("7. 文件操作    8. 统计信息    9. 记录状态\n");
+        printf("0. 退出系统\n");
         printf("-------------------------------------------------\n");
-        printf("请输入你的选择 (1-8): ");
+        printf("请输入你的选择 (0-9): ");
 
         /* 带错误处理的输入 */
         if (scanf("%d", &choice) != 1) {
@@ -179,6 +242,14 @@ int main(void) {
                 handle_file_menu();
                 break;
 
+            case CMD_STATS:
+                show_stats();
+                break;
+
+            case CMD_FLAG:
+                handle_flag_menu();
+                break;
+
             case CMD_QUIT: {
                 printf("感谢使用 MiniDB，再见！\n");
                 db_destroy(g_db);
@@ -187,7 +258,7 @@ int main(void) {
             }
 
             default:
-                printf("错误：请输入 1-8 之间的数字！\n");
+                printf("错误：请输入 0-9 之间的数字！\n");
                 break;
         }
     }

@@ -1,6 +1,6 @@
 /*
  * db.c - MiniDB 数据库核心实现
- * 阶段五：文件 I/O + 排序 + 错误处理
+ * 阶段六：高级特性 — 位操作、国际化、数学支持
  */
 
 #include "db.h"
@@ -29,6 +29,7 @@ Database *db_create(void){
     db->head->name[0] = '\0';
     db->head->age = 0;
     db->head->score = 0.0;
+    db->head->flags = 0;  // 初始化标志位为 0
     db->count = 0;
     db->next_id = 1;
     return db;
@@ -86,6 +87,9 @@ void db_add(Database *db)
         }
         printf("请重新输入。\n");
     }
+
+    // 初始化标志位
+    new_record->flags = 0;
 
     // 头插法：新节点插入到头节点之后
     new_record->next = db->head->next;
@@ -218,6 +222,44 @@ void print_record(const Record *record) {
 }
 
 /*
+ * print_record_verbose - 打印单个学生记录（含状态标志）
+ */
+void print_record_verbose(const Record *record) {
+    printf("-----------------\n");
+    printf("学生 ID：%d\n", record->id);
+    printf("姓名：%s\n", record->name);
+    printf("年龄：%d 岁\n", record->age);
+    printf("成绩：%.2f 分\n", record->score);
+    printf("状态：");
+    if (record->flags == 0) {
+        printf("正常");
+    } else {
+        int first = 1;
+        if (record->flags & FLAG_READONLY) {
+            if (!first) printf(", ");
+            printf("只读");
+            first = 0;
+        }
+        if (record->flags & FLAG_ARCHIVED) {
+            if (!first) printf(", ");
+            printf("已归档");
+            first = 0;
+        }
+        if (record->flags & FLAG_VIP) {
+            if (!first) printf(", ");
+            printf("VIP");
+            first = 0;
+        }
+        if (record->flags & FLAG_DELETED) {
+            if (!first) printf(", ");
+            printf("软删除");
+            first = 0;
+        }
+    }
+    printf("\n");
+}
+
+/*
  * ==================== 排序功能实现 ====================
  * 使用 qsort 对链表进行排序
  * 策略：链表 -> 数组 -> qsort -> 重建链表
@@ -311,4 +353,146 @@ void db_sort(Database *db, int field) {
     free(records);
 
     printf("排序完成！\n");
+}
+
+/*
+ * ==================== 统计功能实现 ====================
+ */
+
+/*
+ * db_stats - 输出数据库统计信息
+ */
+void db_stats(const Database *db) {
+    if (db == NULL || db->head->next == NULL) {
+        printf("数据库为空，无统计信息！\n");
+        return;
+    }
+
+    int count = 0;
+    double sum_score = 0.0;
+    double max_score = -1.0;
+    double min_score = 101.0;
+    int max_age = -1;
+    int min_age = 151;
+
+    Record *p = db->head->next;
+    while (p != NULL) {
+        count++;
+        sum_score += p->score;
+
+        if (p->score > max_score) {
+            max_score = p->score;
+        }
+        if (p->score < min_score) {
+            min_score = p->score;
+        }
+        if (p->age > max_age) {
+            max_age = p->age;
+        }
+        if (p->age < min_age) {
+            min_age = p->age;
+        }
+
+        p = p->next;
+    }
+
+    double avg_score = sum_score / count;
+
+    printf("\n=== 数据库统计信息 ===\n");
+    printf("记录总数：%d\n", count);
+    printf("成绩统计：\n");
+    printf("  - 平均分：%.2f\n", avg_score);
+    printf("  - 最高分：%.2f\n", max_score);
+    printf("  - 最低分：%.2f\n", min_score);
+    printf("年龄统计：\n");
+    printf("  - 最大年龄：%d 岁\n", max_age);
+    printf("  - 最小年龄：%d 岁\n", min_age);
+}
+
+/*
+ * ==================== 记录状态管理实现 ====================
+ */
+
+/*
+ * db_toggle_flag - 切换指定记录的标志位
+ * 参数：db - 数据库指针
+ *       id - 记录 ID
+ *       flag - 要切换的标志位
+ * 返回值：true 表示成功，false 表示失败
+ */
+bool db_toggle_flag(Database *db, int id, uint8_t flag) {
+    if (db == NULL || db->head->next == NULL) {
+        printf("数据库为空！\n");
+        return false;
+    }
+
+    // 查找记录
+    Record *p = db->head->next;
+    while (p != NULL && p->id != id) {
+        p = p->next;
+    }
+
+    if (p == NULL) {
+        printf("未找到 ID 为 %d 的记录！\n", id);
+        return false;
+    }
+
+    // 使用异或操作切换标志位
+    p->flags ^= flag;
+
+    // 显示操作结果
+    const char *flag_name;
+    if (flag == FLAG_READONLY) flag_name = "只读";
+    else if (flag == FLAG_ARCHIVED) flag_name = "归档";
+    else if (flag == FLAG_VIP) flag_name = "VIP";
+    else if (flag == FLAG_DELETED) flag_name = "软删除";
+    else flag_name = "未知";
+
+    bool is_set = (p->flags & flag) != 0;
+    printf("已将记录\"%s\"的%s状态%s。\n",
+           p->name, flag_name, is_set ? "设为开启" : "设为关闭");
+    return true;
+}
+
+/*
+ * db_show_flags - 显示所有记录的状态标志
+ */
+void db_show_flags(const Database *db) {
+    if (db == NULL || db->head->next == NULL) {
+        printf("数据库为空！\n");
+        return;
+    }
+
+    printf("\n=== 记录状态列表 ===\n");
+    Record *p = db->head->next;
+    while (p != NULL) {
+        printf("ID: %d, 姓名：%s, 状态：", p->id, p->name);
+        if (p->flags == 0) {
+            printf("正常");
+        } else {
+            int first = 1;
+            if (p->flags & FLAG_READONLY) {
+                if (!first) printf(", ");
+                printf("只读");
+                first = 0;
+            }
+            if (p->flags & FLAG_ARCHIVED) {
+                if (!first) printf(", ");
+                printf("已归档");
+                first = 0;
+            }
+            if (p->flags & FLAG_VIP) {
+                if (!first) printf(", ");
+                printf("VIP");
+                first = 0;
+            }
+            if (p->flags & FLAG_DELETED) {
+                if (!first) printf(", ");
+                printf("软删除");
+                first = 0;
+            }
+        }
+        printf("\n");
+        p = p->next;
+    }
 }

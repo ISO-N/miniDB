@@ -2,6 +2,8 @@
 #define CONFIG_H
 
 #include <stdio.h>
+#include <stdint.h>   // C99 定宽类型：uint8_t, int32_t 等
+#include <stdbool.h>  // C99 布尔类型：bool, true, false
 
 #define MAX_NAME_LEN 64  // 姓名最大长度
 
