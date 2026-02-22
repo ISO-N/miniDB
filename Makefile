@@ -7,7 +7,7 @@ main.o: main.c db.h utils.h config.h
 db.o: db.c db.h utils.h config.h
 	gcc -c db.c
 
-io.o: io.c io.h
+io.o: io.c io.h db.h config.h
 	gcc -c io.c
 
 utils.o: utils.c utils.h config.h
